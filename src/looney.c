@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     
     Pass the string to the valid_checksum method to see if it's valid, if it is valid, X it out.
   */
-  while(1) {
+  while(ch != EOF) {
     reset_state();
     
     ch = getchar();
@@ -61,7 +61,6 @@ int main(int argc, char* argv[])
     }
     
     if (possible_card == 1) {
-      clean_input();
       detect_pan();
       mask_output();
     }
@@ -81,7 +80,6 @@ int main(int argc, char* argv[])
 
 void detect_pan() {
   int valid = 1;
-  int i;  
   
   int test_len;
   for (test_len = 16; test_len >= MINCARDLENGTH; test_len--) {
@@ -96,16 +94,25 @@ void detect_pan() {
       }
       
       char substr [test_len];
-      for (i = initial; i < input_length; i++) {
-        substr[(i - initial)] = input[i];
+      int substring_index = 0;
+      int input_index = initial;
+      int char_count = 0;
+      while (char_count < test_len) {
+        char ch = input[input_index++];
+        substr[substring_index++] = ch;
+        if (ch >= '0' && ch <= '9') {
+          char_count++;
+        }
       }
       substr[test_len] = 0x00;
+      
+      // printf("%s -- %i -- %i -- %c\n", substr, (int)strlen(substr), test_len, substr[test_len - 1]);
       
       valid = valid_checksum(substr);
       if (valid == 0) {
         pan_detected = 1;
         pan_start = initial;
-        pan_length = test_len;
+        pan_length = (int)strlen(substr);
       }
     }
   }
@@ -116,72 +123,49 @@ int valid_checksum(char* tmp_input)
   int len = strlen(tmp_input);
   int total = 0;
     
-  if (len >= MINCARDLENGTH && len <= MAXCARDLENGTH) {
-    int i;
-    int odd = 0;
-    for (i = (len - 1); i >= 0; i--) {
-      int x = tmp_input[i] - '0';
-  
+  int i;
+  int odd = 0;
+  for (i = (len - 1); i >= 0; i--) {
+    int x = tmp_input[i] - '0';
+    
+    if (x >= '0' || x <= '9') {
       if (odd == 1) {
         x = x * 2;
         if (x >= 10) {
           x = (x % 10) + (x / 10);
         }
       }
-            
+
       total += x;
-  
+
       if (odd == 0) {
         odd = 1;
       } else {
         odd = 0;
       }
     }
-  } else {
-    total = 11;
   }
   
   return (total % 10);
 }
 
-void clean_input()
-{
-  int char_count = 0;
-  char clean_input[input_length];
-  
-  // build a new array with only clean characters in it
-  int i;
-  for (i = 0; i < input_length; i++) {
-    if (input[i] != '-' && input[i] != ' ') {
-      clean_input[char_count] = input[i];
-      char_count++;
-    }
-  }
-  
-  // release the old input and make a new one that is only as long as we need
-  // and transfer the contents of clean_input to the input var
-  free(input);
-  input = malloc(char_count * sizeof(char));
-  for (i = 0; i < char_count; i++) {
-    input[i] = clean_input[i];
-  }
-  // input_length may have changed, so reset it here.
-  input_length = char_count;
-}
-
 void mask_output()
 {
   char ch = 'X';
-  int i;
-  
-  // printf("%i\n%i\n%i\n", pan_detected, pan_start, pan_length);
+  int i = 0;
   
   if (pan_detected == 1) {
-    for (i = 0; i < input_length; i++) {
-      if (i >= pan_start && i < (pan_length + pan_start)) {
+    int num_chars_xed = 0;
+    
+    while (i < input_length) {
+      if (num_chars_xed < pan_length && i >= pan_start && input[i] != ' ' && input[i] != '-') {
         input[i] = ch;
-      } 
+        num_chars_xed++;
+      }
+      i++;
     }
+    
+    input[input_length] = 0x00;
   }
 }
 
