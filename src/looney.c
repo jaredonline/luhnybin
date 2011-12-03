@@ -94,7 +94,6 @@ void detect_pan() {
           char ch = input[input_index++];
           substr[substring_index++] = ch;
           if (ch >= '0' && ch <= '9') {
-            // printf("%c -- %i\n", ch, char_count);
             char_count++;
           }
         } else {
@@ -102,8 +101,6 @@ void detect_pan() {
         }
       }
       substr[substring_index] = 0x00;
-      
-      // printf("%s -- %i -- %i -- %c -- %i\n", substr, (int)strlen(substr), test_len, substr[test_len - 1], initial);
       
       valid = valid_checksum(substr);
       if (valid == 0) {
@@ -154,8 +151,6 @@ void mask_output(int pan_start, int pan_length)
 {
   char ch = 'X';
   int i = 0;
-  
-  // printf("%i\n", pan_start);
   
   int num_chars_xed = 0;
   
