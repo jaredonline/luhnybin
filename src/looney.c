@@ -3,7 +3,7 @@
 #include <string.h>
 
 /* 80 characters should be enough for a single PAN */
-#define MAXBUFFERSIZE 80
+#define MAXBUFFERSIZE 1001
 #define MINCARDLENGTH 14
 #define MAXCARDLENGTH 16
 
@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
 }
 
 void detect_pan() {
-  int valid = 1;
+  int valid = 1; 
   
   int test_len;
   for (test_len = 16; test_len >= MINCARDLENGTH; test_len--) {
@@ -88,25 +88,30 @@ void detect_pan() {
     }
     
     int initial;
-    for (initial = input_length - test_len; initial >= 0 ; initial--) {
+    for (initial = 0; initial <= (input_length - test_len); initial++) {
       if (pan_detected == 1) {
         break;
       }
       
-      char substr [test_len];
+      char substr [input_length];
       int substring_index = 0;
       int input_index = initial;
       int char_count = 0;
       while (char_count < test_len) {
-        char ch = input[input_index++];
-        substr[substring_index++] = ch;
-        if (ch >= '0' && ch <= '9') {
-          char_count++;
+        if (input_index < (int)strlen(input)) {
+          char ch = input[input_index++];
+          substr[substring_index++] = ch;
+          if (ch >= '0' && ch <= '9') {
+            // printf("%c -- %i\n", ch, char_count);
+            char_count++;
+          }
+        } else {
+          break;
         }
       }
-      substr[test_len] = 0x00;
+      substr[substring_index] = 0x00;
       
-      // printf("%s -- %i -- %i -- %c\n", substr, (int)strlen(substr), test_len, substr[test_len - 1]);
+      // printf("%s -- %i -- %i -- %c -- %i\n", substr, (int)strlen(substr), test_len, substr[test_len - 1], initial);
       
       valid = valid_checksum(substr);
       if (valid == 0) {
@@ -122,22 +127,24 @@ int valid_checksum(char* tmp_input)
 {
   int len = strlen(tmp_input);
   int total = 0;
+  int int_count = 0;
     
   int i;
   int odd = 0;
   for (i = (len - 1); i >= 0; i--) {
     int x = tmp_input[i] - '0';
-    
-    if (x >= '0' || x <= '9') {
+        
+    if (x >= 0 && x <= 9) {
       if (odd == 1) {
         x = x * 2;
         if (x >= 10) {
           x = (x % 10) + (x / 10);
         }
       }
-
+      
       total += x;
-
+      int_count++;
+      
       if (odd == 0) {
         odd = 1;
       } else {
@@ -146,7 +153,11 @@ int valid_checksum(char* tmp_input)
     }
   }
   
-  return (total % 10);
+  if (int_count < MINCARDLENGTH) {
+    return 1;
+  } else {
+    return (total % 10);
+  }
 }
 
 void mask_output()
@@ -154,11 +165,13 @@ void mask_output()
   char ch = 'X';
   int i = 0;
   
+  // printf("%i\n", pan_start);
+  
   if (pan_detected == 1) {
     int num_chars_xed = 0;
     
     while (i < input_length) {
-      if (num_chars_xed < pan_length && i >= pan_start && input[i] != ' ' && input[i] != '-') {
+      if (num_chars_xed < pan_length && i >= pan_start && (input[i] >= '0' && input[i] <= '9')) {
         input[i] = ch;
         num_chars_xed++;
       }
