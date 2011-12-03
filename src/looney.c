@@ -8,18 +8,15 @@
 #define MAXCARDLENGTH 16
 
 int valid_checksum(char* tmp_input);
-void mask_output();
+void mask_output(int pan_start, int pan_length);
 void clean_input();
 void detect_pan();
 void reset_state();
 
 char* input;
+char* output;
 int input_length = 0;
 int possible_card = 0;
-
-int pan_start = 0;
-int pan_length = 0;
-int pan_detected = 0;
 
 int main(int argc, char* argv[])
 {
@@ -50,11 +47,16 @@ int main(int argc, char* argv[])
     
     free(input);
     input = malloc(len * sizeof(char));
+    output = malloc(len * sizeof(char));
     int i;
     for (i = 0; i < len; i++) {
       input[i] = in[i];
+      output[i] = in[i];
     }
     input_length = char_count;
+    
+    input[input_length] = 0x00;
+    output[input_length] = 0x00;
     
     if (input_length >= MINCARDLENGTH) {
       possible_card = 1;
@@ -62,19 +64,15 @@ int main(int argc, char* argv[])
     
     if (possible_card == 1) {
       detect_pan();
-      mask_output();
     }
     
-    if (pan_detected == 1) {
-      printf("%s\n", input);
-    } else {
-      printf("%s\n", in);
-    }
+    printf("%s\n", output);
   
     fflush(stdout);
   }
   
   free(input);
+  free(output);
   return 0;
 }
 
@@ -83,15 +81,9 @@ void detect_pan() {
   
   int test_len;
   for (test_len = 16; test_len >= MINCARDLENGTH; test_len--) {
-    if (pan_detected == 1) {
-      break;
-    }
     
     int initial;
     for (initial = 0; initial <= (input_length - test_len); initial++) {
-      if (pan_detected == 1) {
-        break;
-      }
       
       char substr [input_length];
       int substring_index = 0;
@@ -115,9 +107,7 @@ void detect_pan() {
       
       valid = valid_checksum(substr);
       if (valid == 0) {
-        pan_detected = 1;
-        pan_start = initial;
-        pan_length = (int)strlen(substr);
+        mask_output(initial, (int)strlen(substr));
       }
     }
   }
@@ -160,32 +150,27 @@ int valid_checksum(char* tmp_input)
   }
 }
 
-void mask_output()
+void mask_output(int pan_start, int pan_length)
 {
   char ch = 'X';
   int i = 0;
   
   // printf("%i\n", pan_start);
   
-  if (pan_detected == 1) {
-    int num_chars_xed = 0;
-    
-    while (i < input_length) {
-      if (num_chars_xed < pan_length && i >= pan_start && (input[i] >= '0' && input[i] <= '9')) {
-        input[i] = ch;
-        num_chars_xed++;
-      }
-      i++;
+  int num_chars_xed = 0;
+  
+  while (i < input_length) {
+    if (num_chars_xed < pan_length && i >= pan_start && (input[i] >= '0' && input[i] <= '9')) {
+      output[i] = ch;
+      num_chars_xed++;
     }
-    
-    input[input_length] = 0x00;
+    i++;
   }
+  
+  output[input_length] = 0x00;
 }
 
 void reset_state() {
   possible_card = 0;
-  pan_detected = 0;
-  pan_start = 0;
-  pan_length = 0;
   input_length = 0;
 }
