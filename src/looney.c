@@ -3,13 +3,11 @@
 #include <string.h>
 
 /* 80 characters should be enough for a single PAN */
-#define MAXBUFFERSIZE 1001
+#define MAXBUFFERSIZE 1000
 #define MINCARDLENGTH 14
 #define MAXCARDLENGTH 16
 
-int valid_checksum(char* tmp_input);
 void mask_output(int pan_start, int pan_length);
-void clean_input();
 void detect_pan();
 void reset_state();
 
@@ -84,66 +82,47 @@ void detect_pan() {
     
     int initial;
     for (initial = 0; initial <= (input_length - test_len); initial++) {
+      int odd = test_len % 2;
+      int total = 0;
       
-      char substr [input_length];
       int substring_index = 0;
       int input_index = initial;
       int char_count = 0;
+      
       while (char_count < test_len) {
         if (input_index < (int)strlen(input)) {
           char ch = input[input_index++];
-          substr[substring_index++] = ch;
+          substring_index++;
           if (ch >= '0' && ch <= '9') {
+            int x = ch - '0';
+            
+            if (odd == 0) {
+              x = x * 2;
+              if (x >= 10) {
+                x = (x % 10) + (x / 10);
+              }
+            }
+            
+            total += x;
+            
+            if (odd == 1) {
+              odd = 0;
+            } else {
+              odd = 1;
+            }
+            
             char_count++;
+            valid = (char_count < MINCARDLENGTH || char_count > MAXCARDLENGTH) ? 1 : total % 10;
           }
         } else {
           break;
         }
       }
-      substr[substring_index] = 0x00;
       
-      valid = valid_checksum(substr);
       if (valid == 0) {
-        mask_output(initial, (int)strlen(substr));
+        mask_output(initial, substring_index);
       }
     }
-  }
-}
-
-int valid_checksum(char* tmp_input)
-{
-  int len = strlen(tmp_input);
-  int total = 0;
-  int int_count = 0;
-    
-  int i;
-  int odd = 0;
-  for (i = (len - 1); i >= 0; i--) {
-    int x = tmp_input[i] - '0';
-        
-    if (x >= 0 && x <= 9) {
-      if (odd == 1) {
-        x = x * 2;
-        if (x >= 10) {
-          x = (x % 10) + (x / 10);
-        }
-      }
-      
-      total += x;
-      int_count++;
-      
-      if (odd == 0) {
-        odd = 1;
-      } else {
-        odd = 0;
-      }
-    }
-  }
-  
-  if (int_count < MINCARDLENGTH) {
-    return 1;
-  } else {
-    return (total % 10);
   }
 }
 
