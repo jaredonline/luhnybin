@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* 80 characters should be enough for a single PAN */
+/* 1000 characters should be enough for a single PAN */
 #define MAXBUFFERSIZE 1000
 #define MINCARDLENGTH 14
 #define MAXCARDLENGTH 16
@@ -11,15 +11,14 @@ void mask_output(int pan_start, int pan_length);
 void detect_pan();
 void reset_state();
 
-char* input;
-char* output;
+char input [MAXBUFFERSIZE];
+char output [MAXBUFFERSIZE];
 int input_length = 0;
 int possible_card = 0;
 
 int main(int argc, char* argv[])
 {
   char ch; /* read one input character at a time */
-  char in [MAXBUFFERSIZE]; /* initialize an empty "string" */
   int char_count; /* our character counter */
   
   /* loop until the test suite force quits us
@@ -35,26 +34,15 @@ int main(int argc, char* argv[])
     
     ch = getchar();
     char_count = 0;
-    while( (ch != '\n') && (char_count < MAXBUFFERSIZE) ) {
-      in[char_count++] = ch;
+    while( (ch != '\n' && ch != EOF) && (char_count < MAXBUFFERSIZE) ) {
+      input[char_count] = ch;
+      output[char_count] = ch;
+      char_count++;
       ch = getchar();
     }
-    in[char_count] = 0x00;
-    
-    int len = strlen(in);
-    
-    free(input);
-    input = malloc(len * sizeof(char));
-    output = malloc(len * sizeof(char));
-    int i;
-    for (i = 0; i < len; i++) {
-      input[i] = in[i];
-      output[i] = in[i];
-    }
+    input[char_count] = 0x00;
+    output[char_count] = 0x00;
     input_length = char_count;
-    
-    input[input_length] = 0x00;
-    output[input_length] = 0x00;
     
     if (input_length >= MINCARDLENGTH) {
       possible_card = 1;
@@ -69,8 +57,6 @@ int main(int argc, char* argv[])
     fflush(stdout);
   }
   
-  free(input);
-  free(output);
   return 0;
 }
 
