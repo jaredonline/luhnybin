@@ -24,6 +24,7 @@ typedef struct {
   int type;
   int count;
   int total;
+  int odd;
   int skip;
 } pan_tracker;
 
@@ -48,9 +49,7 @@ int main(int argc, char* argv[])
       fflush(stdout);
       
       int i;
-      for (i = 0; i < pan_tracker_count; i++) {
-        pans[i].skip = 1;
-      }
+      for (i = 0; i < pan_tracker_count; i++) pans[i].skip = 1;
       
       char_count = pan_tracker_count = 0;
       continue;
@@ -59,40 +58,47 @@ int main(int argc, char* argv[])
     // add new character to the buffers
     input[char_count] = output[char_count] = ch;
     
-    // setup the new pan_trackers; one for each type
-    int type;
-    for (type = MINCARDLENGTH; type <= MAXCARDLENGTH; type++) {
-      pan_tracker pan = {char_count, type, 0, 0, 0};
-      pans[pan_tracker_count++] = pan;
-    }
+    if ((ch >= '0' && ch <= '9') || ch == ' ' || ch == '-') {
+      // setup the new pan_trackers; one for each type
+      int type;
+      for (type = MINCARDLENGTH; type <= MAXCARDLENGTH; type++) {
+        pan_tracker pan = {char_count, type, 0, 0, (type == 15 ? 1 : 0), 0};
+        pans[pan_tracker_count++] = pan;
+      }
     
-    /*
-      update the state of each PAN tracker and mask the
-      output if a PAN is detected.  If a PAN tracker goes
-      over it's designated length, set it to skip (it's no
-      longer a possible PAN).
-    */
-    int x = ch - '0';
-    int i;
-    for (i = 0; i < pan_tracker_count; i++) {
-      if (x >= 0 && x <= 9 && pans[i].skip == 0) {
-        pans[i].total += ((pans[i].count++ % 2) == (pans[i].type == 15 ? 1 : 0)) ? ((x * 2) % 10) + ((x * 2) / 10): x;
+      /*
+        update the state of each PAN tracker and mask the
+        output if a PAN is detected.  If a PAN tracker goes
+        over it's designated length, set it to skip (it's no
+        longer a possible PAN).
+      */
+      int x = ch - '0';
+      int i;
+      for (i = 0; i < pan_tracker_count; i++) {
+        if (x >= 0 && x <= 9 && pans[i].skip == 0) {
+          pans[i].total += ((pans[i].count++ % 2) == pans[i].odd) ? ((x * 2) % 10) + ((x * 2) / 10): x;
         
-        if (pans[i].count == pans[i].type && pans[i].total % 10 == 0) {
-          int a = pans[i].start;
-          int x_count = 0;
-          while (x_count < pans[i].type) {
-            if (input[a] >= '0' && input[a] <= '9') {
-              output[a] = 'X';
-              x_count++;
-            } 
-            a++;
+          if (pans[i].count == pans[i].type && pans[i].total % 10 == 0) {
+            int a;
+            int x_count = 0;
+            for (a = pans[i].start; x_count < pans[i].type; a++) {
+              if (input[a] >= '0' && input[a] <= '9') {
+                output[a] = 'X';
+                x_count++;
+              } 
+              pans[i].skip = 1;
+            }
+          } else if (pans[i].count > pans[i].type) {
             pans[i].skip = 1;
           }
-        } else if (pans[i].count > pans[i].type) {
-          pans[i].skip = 1;
         }
-        
+      }
+    } else {
+      // PANs don't have anything but numbers ' ' and '-' in them, so if we hit
+      // something else, we invalidate all current active PANs
+      int i;
+      for (i = 0; i < pan_tracker_count; i++) {
+        pans[i].skip = 1;
       }
     }
     
