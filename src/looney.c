@@ -8,8 +8,8 @@
 #define MAXCARDLENGTH 16
 
 int char_count;
-char* input;
-char* output;
+char input [MAXBUFFERSIZE];
+char output [MAXBUFFERSIZE];
 char ch;
 
 typedef struct {
@@ -27,9 +27,6 @@ int main(int argc, char* argv[])
 {    
   char_count = pan_tracker_count = 0;
   
-  input = malloc(MAXBUFFERSIZE * sizeof(char));
-  output = malloc(MAXBUFFERSIZE * sizeof(char));
-  
   while( (ch = getchar()) != EOF && char_count <= MAXBUFFERSIZE) {
     
     if (ch == '\n') {
@@ -44,8 +41,6 @@ int main(int argc, char* argv[])
         pans[i] = pan;
       }
       
-      input = malloc(MAXBUFFERSIZE * sizeof(char));
-      output = malloc(MAXBUFFERSIZE * sizeof(char));
       char_count = pan_tracker_count = 0;
       continue;
     }  
@@ -71,11 +66,10 @@ int main(int argc, char* argv[])
         int x_count = 0;
         while (x_count < pans[i].type) {
           if (input[a] >= '0' && input[a] <= '9') {
-            output[a++] = 'X';
+            output[a] = 'X';
             x_count++;
-          } else {
-            a++;
-          }
+          } 
+          a++;
           pans[i].skip = 1;
         }
       }
