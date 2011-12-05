@@ -7,130 +7,82 @@
 #define MINCARDLENGTH 14
 #define MAXCARDLENGTH 16
 
-void mask_output(int pan_start, int pan_length);
-void detect_pan();
-void reset_state();
+int char_count;
+char* input;
+char* output;
+char ch;
 
-char input [MAXBUFFERSIZE];
-char output [MAXBUFFERSIZE];
-int input_length = 0;
-int possible_card = 0;
+typedef struct {
+  int start;
+  int type;
+  int count;
+  int total;
+  int skip;
+} pan_tracker;
+
+pan_tracker pans [MAXBUFFERSIZE * 3];
+int pan_tracker_count;
 
 int main(int argc, char* argv[])
-{
-  char ch; /* read one input character at a time */
-  int char_count; /* our character counter */
+{    
+  char_count = pan_tracker_count = 0;
   
-  /* loop until the test suite force quits us
-    Grap each single character input and check it's not a new line, then add it 
-    to the string.
-    
-    Terminate the string in a null character.
-    
-    Pass the string to the valid_checksum method to see if it's valid, if it is valid, X it out.
-  */
-  while(ch != EOF) {
-    reset_state();
-    
-    ch = getchar();
-    char_count = 0;
-    while( (ch != '\n' && ch != EOF) && (char_count < MAXBUFFERSIZE) ) {
-      input[char_count] = ch;
-      output[char_count] = ch;
-      char_count++;
-      ch = getchar();
-    }
-    input[char_count] = 0x00;
-    output[char_count] = 0x00;
-    input_length = char_count;
-    
-    if (input_length >= MINCARDLENGTH) {
-      possible_card = 1;
-    }
-    
-    if (possible_card == 1) {
-      detect_pan();
-    }
-    
-    printf("%s\n", output);
+  input = malloc(MAXBUFFERSIZE * sizeof(char));
+  output = malloc(MAXBUFFERSIZE * sizeof(char));
   
-    fflush(stdout);
+  while( (ch = getchar()) != EOF && char_count <= MAXBUFFERSIZE) {
+    
+    if (ch == '\n') {
+      output[char_count] = 0x00;
+      int i;
+      for (i = 0; i < char_count; i++) putchar(output[i]);
+      printf("\n");
+      fflush(stdout);
+      
+      for (i = 0; i < pan_tracker_count; i++) {
+        pan_tracker pan = {0, 0, 0, 1, 1};
+        pans[i] = pan;
+      }
+      
+      input = malloc(MAXBUFFERSIZE * sizeof(char));
+      output = malloc(MAXBUFFERSIZE * sizeof(char));
+      char_count = pan_tracker_count = 0;
+      continue;
+    }  
+    
+    input[char_count] = output[char_count] = ch;
+    
+    int type;
+    for (type = MINCARDLENGTH; type <= MAXCARDLENGTH; type++) {
+      pan_tracker pan = {char_count, type, 0, 0, 0};
+      pans[pan_tracker_count++] = pan;
+    }
+    
+    int x = ch - '0';
+    int i;
+    for (i = 0; i < pan_tracker_count; i++) {
+      if (x >= 0 && x <= 9) {
+        pans[i].total += ((pans[i].count % 2) == (pans[i].type == 15 ? 1 : 0)) ? ((x * 2) % 10) + ((x * 2) / 10): x;
+        pans[i].count++;
+      }
+      
+      if (pans[i].count == pans[i].type && pans[i].total % 10 == 0 && pans[i].skip == 0) {
+        int a = pans[i].start;
+        int x_count = 0;
+        while (x_count < pans[i].type) {
+          if (input[a] >= '0' && input[a] <= '9') {
+            output[a++] = 'X';
+            x_count++;
+          } else {
+            a++;
+          }
+          pans[i].skip = 1;
+        }
+      }
+    }
+    
+    char_count++;  
   }
   
   return 0;
-}
-
-void detect_pan() {
-  int valid = 1; 
-  
-  int test_len;
-  for (test_len = 16; test_len >= MINCARDLENGTH; test_len--) {
-    
-    int initial;
-    for (initial = 0; initial <= (input_length - test_len); initial++) {
-      int odd = test_len % 2;
-      int total = 0;
-      
-      int substring_index = 0;
-      int input_index = initial;
-      int char_count = 0;
-      
-      while (char_count < test_len) {
-        if (input_index < (int)strlen(input)) {
-          char ch = input[input_index++];
-          substring_index++;
-          if (ch >= '0' && ch <= '9') {
-            int x = ch - '0';
-            
-            if (odd == 0) {
-              x = x * 2;
-              if (x >= 10) {
-                x = (x % 10) + (x / 10);
-              }
-            }
-            
-            total += x;
-            
-            if (odd == 1) {
-              odd = 0;
-            } else {
-              odd = 1;
-            }
-            
-            char_count++;
-            valid = (char_count < MINCARDLENGTH || char_count > MAXCARDLENGTH) ? 1 : total % 10;
-          }
-        } else {
-          break;
-        }
-      }
-      
-      if (valid == 0) {
-        mask_output(initial, substring_index);
-      }
-    }
-  }
-}
-
-void mask_output(int pan_start, int pan_length)
-{
-  char ch = 'X';
-  int i = 0;
-  
-  int num_chars_xed = 0;
-  
-  while (i < input_length) {
-    if (num_chars_xed < pan_length && i >= pan_start && (input[i] >= '0' && input[i] <= '9')) {
-      output[i] = ch;
-      num_chars_xed++;
-    }
-    i++;
-  }
-  
-  output[input_length] = 0x00;
-}
-
-void reset_state() {
-  possible_card = 0;
-  input_length = 0;
 }
